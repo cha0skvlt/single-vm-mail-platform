@@ -1,0 +1,14 @@
+---
+# Local Prometheus + Grafana. Exporters bind loopback only.
+# Grafana apt CDN returns 403 from Selectel; install a pinned OSS deb from the controller.
+grafana_admin_user: admin
+grafana_version: "13.2.0"
+grafana_deb_url: "https://dl.grafana.com/oss/release/grafana_{{ grafana_version }}_amd64.deb"
+grafana_deb_checksum: "md5:be89743317e423822c8951bcef229a86"
+
+# Local Loki + Promtail (loopback only). Promtail 3.5.x still ships; 3.7 dropped it.
+loki_version: "3.5.1"
+loki_zip_url: "https://github.com/grafana/loki/releases/download/v{{ loki_version }}/loki-linux-amd64.zip"
+loki_zip_checksum: "sha256:08629c54448e33781b7d6bbd03e67b61c82d5d1cc4f9db3cc25da096b734ca21"
+promtail_zip_url: "https://github.com/grafana/loki/releases/download/v{{ loki_version }}/promtail-linux-amd64.zip"
+promtail_zip_checksum: "sha256:b70d5a5e259a64f6f9b6805bd42d725e50978bcd520fb46113a86cd8b418bbca"

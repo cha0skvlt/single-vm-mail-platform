@@ -1,0 +1,24 @@
+---
+- name: Install CI deploy SSH public key
+  hosts: all
+  become: true
+  vars:
+    ci_deploy_pubkey_file: "{{ playbook_dir }}/../keys/ci_deploy.pub"
+  tasks:
+    - name: Require CI deploy public key on controller
+      ansible.builtin.command:
+        argv:
+          - test
+          - -f
+          - "{{ ci_deploy_pubkey_file }}"
+      delegate_to: localhost
+      become: false
+      run_once: true
+      changed_when: false
+
+    - name: Install CI deploy key for admin user
+      ansible.posix.authorized_key:
+        user: "{{ admin_user }}"
+        key: "{{ lookup('file', ci_deploy_pubkey_file) }}"
+        state: present
+        exclusive: false

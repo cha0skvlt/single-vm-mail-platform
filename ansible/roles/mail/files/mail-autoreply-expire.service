@@ -1,0 +1,6 @@
+[Unit]
+Description=Autoreply date-window arbiter (expire / activate vacation)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/local/sbin/mail-autoreply-expire

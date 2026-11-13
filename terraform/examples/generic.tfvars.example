@@ -1,0 +1,23 @@
+# Generic OpenStack example. Copy to terraform/terraform.tfvars (gitignored).
+# Selectel-only variables stay empty; the selectel provider is still required
+# by versions.tf, so keep the provider block as is.
+
+sel_account_id = ""
+sel_project_id = "your-project-id"
+sel_username   = ""
+sel_user_id    = ""
+sel_password   = "changeme"
+
+auth_url = "https://keystone.example.com:5000/v3"
+hostname = "mail"
+region   = "RegionOne"
+az       = "nova"
+
+dns_nameservers = ["1.1.1.1", "9.9.9.9"]
+
+ssh_port     = 666
+flavor_id    = "your-flavor-id"
+image_name   = "Debian 13 (Trixie) 64-bit"
+volume_type  = "your-volume-type"
+disk_size_gb = 100
+disk_iops    = "2000"

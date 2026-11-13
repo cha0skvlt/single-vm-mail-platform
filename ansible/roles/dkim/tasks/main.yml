@@ -1,0 +1,68 @@
+---
+- name: Check DKIM private key is present on controller
+  ansible.builtin.stat:
+    path: "{{ playbook_dir }}/../dkim/{{ dkim_selector }}.private"
+  register: dkim_local_key
+  delegate_to: localhost
+  become: false
+
+- name: Fail early when DKIM key missing
+  ansible.builtin.fail:
+    msg: >-
+      Missing dkim/{{ dkim_selector }}.private. Generate once with
+      'opendkim-genkey -b 2048 -d {{ mail_domain }} -s {{ dkim_selector }}',
+      store the .private as GitHub secret MAIL_DKIM_PRIVATE, and publish mail.txt as TXT.
+  when: not dkim_local_key.stat.exists
+
+- name: Install OpenDKIM
+  ansible.builtin.apt:
+    name:
+      - opendkim
+      - opendkim-tools
+    state: present
+    update_cache: true
+
+- name: Ensure OpenDKIM key directory
+  ansible.builtin.file:
+    path: "/etc/opendkim/keys/{{ mail_domain }}"
+    state: directory
+    owner: opendkim
+    group: opendkim
+    mode: "0750"
+
+- name: Install DKIM private key
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../dkim/{{ dkim_selector }}.private"
+    dest: "{{ dkim_keyfile }}"
+    owner: opendkim
+    group: opendkim
+    mode: "0600"
+  notify: Restart opendkim
+
+- name: Template opendkim.conf
+  ansible.builtin.template:
+    src: opendkim.conf.j2
+    dest: /etc/opendkim.conf
+    mode: "0644"
+  notify: Restart opendkim
+
+- name: Pin OpenDKIM socket in /etc/default/opendkim
+  ansible.builtin.copy:
+    dest: /etc/default/opendkim
+    mode: "0644"
+    content: |
+      RUNDIR=/run/opendkim
+      SOCKET="inet:8891@127.0.0.1"
+      USER=opendkim
+      GROUP=opendkim
+      PIDFILE=/run/opendkim/$NAME.pid
+  notify: Restart opendkim
+
+- name: Enable and start opendkim
+  ansible.builtin.systemd:
+    name: opendkim
+    enabled: true
+    state: started
+
+- name: Apply OpenDKIM listen config now
+  ansible.builtin.meta: flush_handlers

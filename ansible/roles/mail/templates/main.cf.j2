@@ -1,0 +1,61 @@
+compatibility_level = 3.6
+smtpd_banner = $myhostname ESMTP
+biff = no
+append_dot_mydomain = no
+readme_directory = no
+
+myhostname = {{ mail_fqdn }}
+mydomain = {{ mail_domain }}
+myorigin = {{ mail_domain }}
+smtp_helo_name = {{ mail_fqdn }}
+inet_interfaces = all
+inet_protocols = ipv4
+mydestination = localhost
+mynetworks = 127.0.0.0/8 [::1]/128
+alias_maps = hash:/etc/aliases
+alias_database = hash:/etc/aliases
+mailbox_size_limit = 0
+recipient_delimiter = +
+message_size_limit = 52428800
+
+# Virtual mailboxes delivered via Dovecot LMTP
+virtual_mailbox_domains = {{ mail_domain }}
+virtual_mailbox_base = {{ vmail_home }}
+virtual_mailbox_maps = hash:/etc/postfix/vmailbox
+virtual_alias_maps = hash:/etc/postfix/virtual hash:/etc/postfix/virtual_redirect
+virtual_transport = lmtp:unix:private/dovecot-lmtp
+
+# TLS
+smtpd_tls_cert_file = {{ tls_cert }}
+smtpd_tls_key_file = {{ tls_key }}
+smtpd_tls_security_level = may
+smtpd_tls_protocols = >=TLSv1.2
+smtp_tls_security_level = may
+smtp_tls_protocols = >=TLSv1.2
+smtpd_tls_session_cache_database = btree:${data_directory}/smtpd_scache
+smtp_tls_session_cache_database = btree:${data_directory}/smtp_scache
+
+# SASL via Dovecot (used on 465 submission)
+smtpd_sasl_type = dovecot
+smtpd_sasl_path = private/auth
+
+# Restrictions — no open relay; relay only for authenticated senders.
+# RBL + manual cidr blacklist apply to inbound :25 after auth/unauth checks.
+smtpd_relay_restrictions = permit_mynetworks permit_sasl_authenticated reject_unauth_destination
+smtpd_recipient_restrictions =
+    permit_mynetworks
+    permit_sasl_authenticated
+    reject_unauth_destination
+    check_client_access cidr:/etc/postfix/client_blacklist
+{% for zone in postfix_rbl_zones %}
+    reject_rbl_client {{ zone }}
+{% endfor %}
+
+# OpenDKIM only. accept if the milter is down — do not block mail.
+# Optional external milter: prepend inet:{{ ess_milter_host }}:{{ ess_milter_port }} to smtpd_milters.
+# {auth_type} is what OpenDKIM MacroList uses to sign SASL submissions on 465.
+milter_default_action = accept
+milter_protocol = 6
+milter_mail_macros = i {mail_addr} {client_addr} {client_name} {auth_type} {auth_authen}
+smtpd_milters = inet:127.0.0.1:8891
+non_smtpd_milters = inet:127.0.0.1:8891

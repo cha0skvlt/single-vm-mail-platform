@@ -1,0 +1,24 @@
+# Selectel example. Copy to terraform/terraform.tfvars (gitignored).
+# This is the only place where vendor-specific values are documented.
+
+sel_account_id = "000000000000"
+sel_project_id = "00000000000000000000000000000000"
+sel_username   = "service-user"
+sel_user_id    = "00000000000000000000000000000000"
+sel_password   = "changeme"
+
+auth_url = "https://cloud.api.selcloud.ru/identity/v3"
+hostname = "mail"
+region   = "ru-3"
+az       = "ru-3b"
+
+# Selectel recursive resolvers for ru-3 (St Petersburg).
+dns_nameservers = ["188.93.16.19", "188.93.17.19"]
+
+# SSH: deploy public key — keys/deploy.pub (not in tfvars)
+ssh_port     = 666
+flavor_id    = "1054"
+image_name   = "Debian 13 (Trixie) 64-bit"
+volume_type  = "universal2.ru-3b"
+disk_size_gb = 100
+disk_iops    = "2000"

@@ -1,0 +1,112 @@
+{
+  "uid": "mail-mail",
+  "title": "Mail",
+  "tags": ["mail", "postfix", "dovecot"],
+  "timezone": "Europe/Moscow",
+  "schemaVersion": 39,
+  "refresh": "10s",
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": { "list": [] },
+  "panels": [
+    {
+      "id": 1, "type": "stat", "title": "Queue",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "thresholds": { "mode": "absolute", "steps": [{"color": "green", "value": 0}, {"color": "orange", "value": 20}, {"color": "red", "value": 100}] } }, "overrides": [] },
+      "targets": [{ "expr": "mail_postfix_queue_messages", "refId": "A" }]
+    },
+    {
+      "id": 2, "type": "stat", "title": "In / sec",
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops", "decimals": 2 }, "overrides": [] },
+      "targets": [{ "expr": "sum(rate(mail_postfix_connects_total[5m]))", "refId": "A" }]
+    },
+    {
+      "id": 3, "type": "stat", "title": "Delivered / sec",
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops", "decimals": 2, "color": { "mode": "fixed", "fixedColor": "green" } }, "overrides": [] },
+      "targets": [{ "expr": "rate(mail_postfix_status_total{status=\"sent\"}[5m])", "refId": "A" }]
+    },
+    {
+      "id": 4, "type": "stat", "title": "Rejected / sec",
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops", "decimals": 2, "color": { "mode": "fixed", "fixedColor": "orange" } }, "overrides": [] },
+      "targets": [{ "expr": "rate(mail_postfix_status_total{status=\"rejected\"}[5m])", "refId": "A" }]
+    },
+    {
+      "id": 5, "type": "stat", "title": "Bounced / sec",
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops", "decimals": 2, "color": { "mode": "fixed", "fixedColor": "red" } }, "overrides": [] },
+      "targets": [{ "expr": "rate(mail_postfix_status_total{status=\"bounced\"}[5m])", "refId": "A" }]
+    },
+    {
+      "id": 6, "type": "stat", "title": "LMTP saved / sec",
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops", "decimals": 2 }, "overrides": [] },
+      "targets": [{ "expr": "rate(mail_dovecot_lmtp_saved_total[5m])", "refId": "A" }]
+    },
+    {
+      "id": 7, "type": "timeseries", "title": "Mail / second",
+      "gridPos": { "h": 9, "w": 16, "x": 0, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops", "custom": { "fillOpacity": 12, "spanNulls": true } }, "overrides": [] },
+      "targets": [
+        { "expr": "sum(rate(mail_postfix_connects_total[5m]))", "refId": "A", "legendFormat": "connects" },
+        { "expr": "rate(mail_postfix_status_total{status=\"sent\"}[5m])", "refId": "B", "legendFormat": "sent" },
+        { "expr": "rate(mail_postfix_status_total{status=\"rejected\"}[5m])", "refId": "C", "legendFormat": "rejected" },
+        { "expr": "rate(mail_postfix_status_total{status=\"bounced\"}[5m])", "refId": "D", "legendFormat": "bounced" },
+        { "expr": "rate(mail_postfix_status_total{status=\"deferred\"}[5m])", "refId": "E", "legendFormat": "deferred" },
+        { "expr": "rate(mail_dovecot_lmtp_saved_total[5m])", "refId": "F", "legendFormat": "lmtp inbox" }
+      ]
+    },
+    {
+      "id": 8, "type": "timeseries", "title": "Queue depth",
+      "gridPos": { "h": 9, "w": 8, "x": 16, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "decimals": 0, "custom": { "fillOpacity": 20, "spanNulls": true } }, "overrides": [] },
+      "targets": [{ "expr": "mail_postfix_queue_messages", "refId": "A", "legendFormat": "queued" }]
+    },
+    {
+      "id": 9, "type": "timeseries", "title": "SMTP vs SMTPS connects / sec",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 13 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops", "custom": { "fillOpacity": 12, "spanNulls": true } }, "overrides": [] },
+      "targets": [
+        { "expr": "rate(mail_postfix_connects_total{service=\"smtp\"}[5m])", "refId": "A", "legendFormat": "25 smtp" },
+        { "expr": "rate(mail_postfix_connects_total{service=\"smtps\"}[5m])", "refId": "B", "legendFormat": "465 smtps" }
+      ]
+    },
+    {
+      "id": 10, "type": "timeseries", "title": "POP3S logins / sec",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 13 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops", "custom": { "fillOpacity": 12, "spanNulls": true } }, "overrides": [] },
+      "targets": [
+        { "expr": "rate(mail_dovecot_pop3_login_total{result=\"ok\"}[5m])", "refId": "A", "legendFormat": "ok" },
+        { "expr": "rate(mail_dovecot_pop3_login_total{result=\"fail\"}[5m])", "refId": "B", "legendFormat": "fail" }
+      ]
+    },
+    {
+      "id": 11, "type": "timeseries", "title": "RBL rejects / sec",
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 21 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops", "custom": { "fillOpacity": 12, "spanNulls": true } }, "overrides": [] },
+      "targets": [{ "expr": "rate(mail_postfix_rbl_reject_total[5m])", "refId": "A", "legendFormat": "dnsbl" }]
+    },
+    {
+      "id": 12, "type": "timeseries", "title": "Inbound DKIM verify / sec",
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 21 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops", "custom": { "fillOpacity": 12, "spanNulls": true } }, "overrides": [] },
+      "targets": [
+        { "expr": "rate(mail_opendkim_verify_total{result=\"ok\"}[5m])", "refId": "A", "legendFormat": "pass" },
+        { "expr": "rate(mail_opendkim_verify_total{result=\"fail\"}[5m])", "refId": "B", "legendFormat": "fail" }
+      ]
+    }
+  ]
+}

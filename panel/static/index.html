@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<script src="/js/theme-boot.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<meta name="mail-domain" content="__MAIL_DOMAIN__">
+<title>MAIL BOARD</title>
+<link rel="icon" href="/img/favicon-mail.svg" type="image/svg+xml">
+<meta name="theme-color" content="#0b0c0e">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/tokens.css">
+<link rel="stylesheet" href="/css/panel-tokens.css">
+<link rel="stylesheet" href="/css/components.css">
+<link rel="stylesheet" href="/css/responsive.css">
+<link rel="stylesheet" href="/css/panel-grid.css">
+<link rel="stylesheet" href="/css/sites-table.css">
+<link rel="stylesheet" href="/css/users-table.css">
+</head>
+<body>
+
+<header class="header">
+  <div class="logo" aria-label="MAIL BOARD">
+    <img class="logo-mark" id="logo-mark" src="/img/mark.svg" width="99" height="42" alt="Mail" draggable="false">
+    <span class="logo-wordmark">
+      <span class="logo-wordmark-primary">MAIL</span>
+      <span class="logo-wordmark-secondary">BOARD</span>
+    </span>
+  </div>
+  <div class="header-actions">
+    <div class="header-status" id="header-status">
+      <span class="btn btn-primary header-status-chip" id="status-mail-chip">
+        <span class="status-beacon status-beacon--ok header-status-orb" id="status-mail-orb" aria-hidden="true"></span>
+        Mail
+      </span>
+    </div>
+    <div class="header-tools">
+      <button class="btn btn-header-tool btn-icon" type="button" id="theme-toggle-btn" aria-label="Toggle theme" title="Toggle theme">
+        <svg id="theme-icon" class="icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+      </button>
+    </div>
+    <div class="header-actions-primary">
+      <a class="btn btn-primary" href="/grafana/">Grafana</a>
+      <form class="header-logout-form" method="post" action="/logout">
+        <button type="submit" class="btn btn-primary">Sign out</button>
+      </form>
+    </div>
+  </div>
+</header>
+
+<div class="board-wrap" id="board-wrap">
+  <div class="monitor-board" id="monitor-board" aria-label="Users">
+    <section class="monitor-tile card tile--table" id="users-tile">
+      <div class="monitor-tile__head">
+        <h2 class="monitor-tile__title">Users</h2>
+        <span class="monitor-tile__meta" id="users-count"></span>
+      </div>
+      <form class="users-add" id="users-add" autocomplete="off">
+        <input class="users-input" name="local" type="text" placeholder="login" required autocapitalize="none" spellcheck="false">
+        <input class="users-input" name="password" type="password" placeholder="password" required minlength="6">
+        <button type="submit" class="btn btn-primary">Add user</button>
+      </form>
+      <p class="users-error" id="users-error" hidden role="alert"></p>
+      <div class="monitor-tile__body">
+        <table class="tile-table tile-table--sites">
+          <thead>
+            <tr><th>Login</th><th>Email</th><th></th></tr>
+          </thead>
+          <tbody id="users-body"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="pw-modal" id="pw-modal" hidden>
+  <div class="pw-modal__backdrop" data-pw-dismiss></div>
+  <div class="pw-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="pw-modal-title">
+    <div id="pw-modal-form-view">
+      <h3 class="pw-modal__title" id="pw-modal-title">Change password</h3>
+      <p class="pw-modal__user" id="pw-modal-user"></p>
+      <label class="pw-modal__label" for="pw-modal-input">New password</label>
+      <input id="pw-modal-input" class="users-input pw-modal__input" type="password" minlength="6" autocomplete="new-password" spellcheck="false">
+      <p class="pw-modal__hint">At least 6 characters</p>
+      <p class="pw-modal__error" id="pw-modal-error" hidden role="alert"></p>
+      <div class="pw-modal__actions">
+        <button type="button" class="btn" id="pw-modal-cancel">Cancel</button>
+        <button type="button" class="btn btn-primary" id="pw-modal-ok">OK</button>
+      </div>
+    </div>
+    <div id="pw-modal-done-view" hidden>
+      <p class="pw-modal__success" id="pw-modal-success">Password changed</p>
+      <div class="pw-modal__actions">
+        <button type="button" class="btn btn-primary" id="pw-modal-close">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="pw-modal" id="ar-modal" hidden>
+  <div class="pw-modal__backdrop" data-ar-dismiss></div>
+  <div class="pw-modal__dialog pw-modal__dialog--wide" role="dialog" aria-modal="true" aria-labelledby="ar-modal-title">
+    <div id="ar-modal-form-view">
+      <h3 class="pw-modal__title" id="ar-modal-title">Autoreply</h3>
+      <p class="pw-modal__user" id="ar-modal-user"></p>
+      <label class="pw-modal__label" for="ar-modal-input">Reply text</label>
+      <textarea id="ar-modal-input" class="users-input pw-modal__input ar-modal__text" rows="8" maxlength="4000" spellcheck="true"></textarea>
+      <div class="ar-modal__dates">
+        <label class="pw-modal__label" for="ar-modal-start">Start</label>
+        <input type="date" id="ar-modal-start" class="users-input pw-modal__input" />
+        <label class="pw-modal__label" for="ar-modal-end">End</label>
+        <input type="date" id="ar-modal-end" class="users-input pw-modal__input" />
+      </div>
+      <p class="pw-modal__hint">Empty text clears the autoreply. Dates are optional: an empty start means immediately, an empty end means no expiry (server time)</p>
+      <p class="pw-modal__error" id="ar-modal-error" hidden role="alert"></p>
+      <div class="pw-modal__actions">
+        <button type="button" class="btn" id="ar-modal-cancel">Cancel</button>
+        <button type="button" class="btn btn-primary" id="ar-modal-ok">Save</button>
+      </div>
+    </div>
+    <div id="ar-modal-done-view" hidden>
+      <p class="pw-modal__success" id="ar-modal-success">Autoreply saved</p>
+      <div class="pw-modal__actions">
+        <button type="button" class="btn btn-primary" id="ar-modal-close">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="pw-modal" id="rd-modal" hidden>
+  <div class="pw-modal__backdrop" data-rd-dismiss></div>
+  <div class="pw-modal__dialog pw-modal__dialog--wide" role="dialog" aria-modal="true" aria-labelledby="rd-modal-title">
+    <div id="rd-modal-form-view">
+      <h3 class="pw-modal__title" id="rd-modal-title">Redirects</h3>
+      <p class="pw-modal__user" id="rd-modal-user"></p>
+      <p class="pw-modal__hint">A copy of the message stays in this mailbox</p>
+      <ul class="rd-modal__list" id="rd-modal-list"></ul>
+      <label class="pw-modal__label" for="rd-modal-input">Add mailbox</label>
+      <div class="rd-modal__add">
+        <input id="rd-modal-input" class="users-input pw-modal__input" type="text" autocapitalize="none" spellcheck="false" placeholder="login">
+        <button type="button" class="btn" id="rd-modal-add">Add</button>
+      </div>
+      <p class="pw-modal__error" id="rd-modal-error" hidden role="alert"></p>
+      <div class="pw-modal__actions">
+        <button type="button" class="btn" id="rd-modal-cancel">Cancel</button>
+        <button type="button" class="btn btn-primary" id="rd-modal-ok">Save</button>
+      </div>
+    </div>
+    <div id="rd-modal-done-view" hidden>
+      <p class="pw-modal__success" id="rd-modal-success">Redirects saved</p>
+      <div class="pw-modal__actions">
+        <button type="button" class="btn btn-primary" id="rd-modal-close">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="/js/panel/main.js"></script>
+</body>
+</html>

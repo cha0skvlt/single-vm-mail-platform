@@ -1,0 +1,18 @@
+[Unit]
+Description=mail Postfix/Dovecot log metrics
+After=network.target
+
+[Service]
+Type=simple
+User=mailmetrics
+Group=adm
+ExecStart=/usr/bin/python3 /usr/local/sbin/mail-metrics
+Restart=on-failure
+RestartSec=2
+Environment=MAIL_METRICS_BIND=127.0.0.1
+Environment=MAIL_METRICS_PORT=9154
+Environment=MAIL_LOG=/var/log/mail.log
+Environment=PATH=/usr/sbin:/usr/bin:/bin
+
+[Install]
+WantedBy=multi-user.target

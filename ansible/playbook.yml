@@ -1,0 +1,12 @@
+---
+# deploy user, SSH on ssh_port from first boot (cloud-init). SSH keys only via cloud-init.
+- name: Mail stack — base, fail2ban, mail, dkim, monitoring, panel
+  hosts: all
+  become: true
+  roles:
+    - base
+    - fail2ban
+    - mail
+    - dkim
+    - monitoring
+    - panel

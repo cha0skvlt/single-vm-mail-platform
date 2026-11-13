@@ -1,0 +1,8 @@
+---
+# Role-level defaults live in group_vars/all.yml (mail_domain, vmail_*, tls_*, mail_retention_days).
+mail_packages:
+  - postfix
+  - dovecot-core
+  - dovecot-pop3d
+  - dovecot-lmtpd
+  - dovecot-sieve

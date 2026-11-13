@@ -1,0 +1,6 @@
+---
+panel_user: mailpanel
+panel_root: /opt/mail/panel
+panel_db_dir: /var/lib/mailpanel
+panel_bind: "127.0.0.1"
+panel_port: 8080

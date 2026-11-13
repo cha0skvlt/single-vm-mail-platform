@@ -1,0 +1,9 @@
+[Unit]
+Description=Expunge downloaded mail older than {{ mail_retention_days }} days
+After=dovecot.service
+Wants=dovecot.service
+
+[Service]
+Type=oneshot
+Environment=MAIL_RETENTION_DAYS={{ mail_retention_days }}
+ExecStart=/usr/local/sbin/mail-cleanup.sh

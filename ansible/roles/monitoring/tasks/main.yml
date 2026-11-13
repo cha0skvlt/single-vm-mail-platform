@@ -1,0 +1,265 @@
+---
+- name: Fail when Grafana admin password is missing
+  ansible.builtin.fail:
+    msg: Set GRAFANA_ADMIN_PASSWORD
+  when: not grafana_admin_password
+
+- name: Install Prometheus packages
+  ansible.builtin.apt:
+    name:
+      - prometheus-node-exporter
+      - prometheus
+    state: present
+    update_cache: true
+
+- name: Download Grafana deb on controller
+  ansible.builtin.get_url:
+    url: "{{ grafana_deb_url }}"
+    dest: "/tmp/grafana_{{ grafana_version }}_amd64.deb"
+    checksum: "{{ grafana_deb_checksum }}"
+    mode: "0644"
+  delegate_to: localhost
+  become: false
+
+- name: Copy Grafana deb to host
+  ansible.builtin.copy:
+    src: "/tmp/grafana_{{ grafana_version }}_amd64.deb"
+    dest: "/tmp/grafana_{{ grafana_version }}_amd64.deb"
+    mode: "0644"
+
+- name: Install Grafana from local deb
+  ansible.builtin.apt:
+    deb: "/tmp/grafana_{{ grafana_version }}_amd64.deb"
+
+- name: Bind node_exporter to localhost
+  ansible.builtin.copy:
+    dest: /etc/default/prometheus-node-exporter
+    mode: "0644"
+    content: |
+      ARGS="--web.listen-address=127.0.0.1:9100"
+  notify: Restart node_exporter
+
+- name: Bind Prometheus to localhost
+  ansible.builtin.copy:
+    dest: /etc/default/prometheus
+    mode: "0644"
+    content: |
+      ARGS="--web.listen-address=127.0.0.1:9090 --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/var/lib/prometheus/metrics2"
+  notify: Restart prometheus
+
+- name: Install Prometheus scrape config
+  ansible.builtin.template:
+    src: prometheus.yml.j2
+    dest: /etc/prometheus/prometheus.yml
+    mode: "0644"
+  notify: Restart prometheus
+
+- name: Install Grafana server config
+  ansible.builtin.template:
+    src: grafana.ini.j2
+    dest: /etc/grafana/grafana.ini
+    owner: root
+    group: grafana
+    mode: "0640"
+  notify: Restart grafana
+
+- name: Install Grafana datasources
+  ansible.builtin.template:
+    src: grafana-datasource.yml.j2
+    dest: /etc/grafana/provisioning/datasources/prometheus.yml
+    owner: root
+    group: grafana
+    mode: "0640"
+  notify: Restart grafana
+
+- name: Install Grafana dashboard provider
+  ansible.builtin.template:
+    src: grafana-dashboards.yml.j2
+    dest: /etc/grafana/provisioning/dashboards/mail.yml
+    owner: root
+    group: grafana
+    mode: "0640"
+  notify: Restart grafana
+
+- name: Ensure Grafana dashboards directory
+  ansible.builtin.file:
+    path: /var/lib/grafana/dashboards
+    state: directory
+    owner: grafana
+    group: grafana
+    mode: "0750"
+
+- name: Install Grafana dashboards
+  ansible.builtin.copy:
+    src: "dashboards/{{ item }}"
+    dest: "/var/lib/grafana/dashboards/{{ item }}"
+    owner: grafana
+    group: grafana
+    mode: "0644"
+  loop:
+    - server.json
+    - mail.json
+    - mail-logs.json
+  notify: Restart grafana
+
+- name: Install unzip for Loki/Promtail archives
+  ansible.builtin.apt:
+    name: unzip
+    state: present
+
+- name: Download Loki zip on controller
+  ansible.builtin.get_url:
+    url: "{{ loki_zip_url }}"
+    dest: "/tmp/loki-linux-amd64-{{ loki_version }}.zip"
+    checksum: "{{ loki_zip_checksum }}"
+    mode: "0644"
+  delegate_to: localhost
+  become: false
+
+- name: Download Promtail zip on controller
+  ansible.builtin.get_url:
+    url: "{{ promtail_zip_url }}"
+    dest: "/tmp/promtail-linux-amd64-{{ loki_version }}.zip"
+    checksum: "{{ promtail_zip_checksum }}"
+    mode: "0644"
+  delegate_to: localhost
+  become: false
+
+- name: Unpack Loki on host
+  ansible.builtin.unarchive:
+    src: "/tmp/loki-linux-amd64-{{ loki_version }}.zip"
+    dest: /usr/local/bin
+    mode: "0755"
+    remote_src: false
+
+- name: Unpack Promtail on host
+  ansible.builtin.unarchive:
+    src: "/tmp/promtail-linux-amd64-{{ loki_version }}.zip"
+    dest: /usr/local/bin
+    mode: "0755"
+    remote_src: false
+
+- name: Install Loki binary name
+  ansible.builtin.copy:
+    src: /usr/local/bin/loki-linux-amd64
+    dest: /usr/local/bin/loki
+    remote_src: true
+    mode: "0755"
+  notify: Restart loki
+
+- name: Install Promtail binary name
+  ansible.builtin.copy:
+    src: /usr/local/bin/promtail-linux-amd64
+    dest: /usr/local/bin/promtail
+    remote_src: true
+    mode: "0755"
+  notify: Restart promtail
+
+- name: Ensure Loki user
+  ansible.builtin.user:
+    name: loki
+    system: true
+    shell: /usr/sbin/nologin
+    home: /var/lib/loki
+    create_home: false
+
+- name: Ensure Promtail user
+  ansible.builtin.user:
+    name: promtail
+    system: true
+    shell: /usr/sbin/nologin
+    home: /var/lib/promtail
+    groups: [adm, systemd-journal]
+    append: true
+    create_home: false
+
+- name: Ensure Loki directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: loki
+    group: loki
+    mode: "0750"
+  loop:
+    - /etc/loki
+    - /var/lib/loki
+
+- name: Ensure Promtail directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: promtail
+    group: promtail
+    mode: "0750"
+  loop:
+    - /etc/promtail
+    - /var/lib/promtail
+
+- name: Install Loki config
+  ansible.builtin.template:
+    src: loki-config.j2
+    dest: /etc/loki/config.yml
+    owner: loki
+    group: loki
+    mode: "0640"
+  notify: Restart loki
+
+- name: Install Promtail config
+  ansible.builtin.template:
+    src: promtail-config.j2
+    dest: /etc/promtail/config.yml
+    owner: promtail
+    group: promtail
+    mode: "0640"
+  notify: Restart promtail
+
+- name: Install Loki unit
+  ansible.builtin.template:
+    src: loki.service.j2
+    dest: /etc/systemd/system/loki.service
+    mode: "0644"
+  notify: Restart loki
+
+- name: Install Promtail unit
+  ansible.builtin.template:
+    src: promtail.service.j2
+    dest: /etc/systemd/system/promtail.service
+    mode: "0644"
+  notify: Restart promtail
+
+- name: Ensure mail-metrics user
+  ansible.builtin.user:
+    name: mailmetrics
+    system: true
+    shell: /usr/sbin/nologin
+    groups: [adm]
+    append: true
+    create_home: false
+
+- name: Install mail-metrics exporter
+  ansible.builtin.copy:
+    src: mail-metrics.py
+    dest: /usr/local/sbin/mail-metrics
+    mode: "0755"
+  notify: Restart mail-metrics
+
+- name: Install mail-metrics unit
+  ansible.builtin.template:
+    src: mail-metrics.service.j2
+    dest: /etc/systemd/system/mail-metrics.service
+    mode: "0644"
+  notify: Restart mail-metrics
+
+- name: Enable metrics services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  loop:
+    - prometheus-node-exporter
+    - prometheus
+    - grafana-server
+    - loki
+    - promtail
+    - mail-metrics

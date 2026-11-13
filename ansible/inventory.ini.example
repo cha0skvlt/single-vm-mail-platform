@@ -1,0 +1,3 @@
+# Group name = hostname (mail); host alias "vm" avoids group/host name collision.
+[mail]
+vm ansible_host=YOUR_PUBLIC_IP ansible_user=deploy ansible_port=666

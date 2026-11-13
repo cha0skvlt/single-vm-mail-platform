@@ -1,0 +1,19 @@
+title = "single-vm-mail-platform"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "RFC 2606 / RFC 5737 placeholders used by the template"
+regexes = [
+  '''example\.(com|net|org)''',
+  '''203\.0\.113\.\d{1,3}''',
+  '''198\.51\.100\.\d{1,3}''',
+  '''192\.0\.2\.\d{1,3}''',
+  '''(?i)changeme''',
+]
+paths = [
+  '''terraform/examples/.*''',
+  '''docs/.*\.md''',
+  '''README\.md''',
+]

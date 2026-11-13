@@ -1,0 +1,43 @@
+[server]
+http_addr = 127.0.0.1
+http_port = 3000
+domain = {{ mail_fqdn }}
+root_url = https://{{ mail_fqdn }}/grafana/
+serve_from_sub_path = true
+
+[security]
+admin_user = {{ grafana_admin_user }}
+admin_password = {{ grafana_admin_password }}
+disable_initial_admin_creation = false
+
+[users]
+allow_sign_up = false
+auto_assign_org_role = Admin
+
+[plugins]
+plugin_admin_enabled = false
+preinstall = prometheus loki
+preinstall_async = false
+preinstall_auto_update = false
+
+[auth]
+disable_login_form = true
+disable_signout_menu = true
+
+[auth.basic]
+enabled = false
+
+[auth.anonymous]
+enabled = false
+
+[auth.proxy]
+enabled = true
+enable_login_token = true
+header_name = X-WEBAUTH-USER
+header_property = username
+auto_sign_up = true
+headers =
+whitelist = 127.0.0.1
+
+[dashboards]
+default_home_dashboard_path = /var/lib/grafana/dashboards/mail.json

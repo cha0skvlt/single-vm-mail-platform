@@ -1,0 +1,97 @@
+# Dovecot 2.4 (Debian 13 Trixie). 2.3 syntax will not start.
+dovecot_config_version = 2.4.0
+dovecot_storage_version = 2.4.0
+
+protocols {
+  pop3 = yes
+  lmtp = yes
+}
+listen = *
+
+ssl = required
+ssl_server_cert_file = {{ tls_cert }}
+ssl_server_key_file = {{ tls_key }}
+ssl_min_protocol = TLSv1.2
+
+# Auth — clients keep old logins (bare "user" or "user@example.com")
+auth_allow_cleartext = no
+auth_mechanisms = plain login
+auth_default_domain = {{ mail_domain }}
+auth_username_format = %{user | lower}
+
+mail_driver = maildir
+# Domain is fixed: bare login must not land in /var/vmail//user
+mail_home = {{ vmail_home }}/{{ mail_domain }}/%{user | username}
+mail_path = ~/Maildir
+mail_uid = {{ vmail_user }}
+mail_gid = {{ vmail_group }}
+first_valid_uid = {{ vmail_uid }}
+last_valid_uid = {{ vmail_uid }}
+
+namespace inbox {
+  inbox = yes
+}
+
+passdb passwd-file {
+  passwd_file_path = /etc/dovecot/users
+  default_password_scheme = SSHA512
+  # Lookup local-part so both "user" and "user@domain" hit the same passwd key
+  auth_username_format = %{user | username | lower}
+}
+
+userdb passwd-file {
+  passwd_file_path = /etc/dovecot/users
+  auth_username_format = %{user | username | lower}
+  fields {
+    uid:default = {{ vmail_user }}
+    gid:default = {{ vmail_group }}
+    home:default = {{ vmail_home }}/{{ mail_domain }}/%{user | username}
+  }
+}
+
+# Postfix SASL + LMTP sockets inside the Postfix queue dir
+service auth {
+  unix_listener /var/spool/postfix/private/auth {
+    mode = 0660
+    user = postfix
+    group = postfix
+  }
+}
+
+service lmtp {
+  unix_listener /var/spool/postfix/private/dovecot-lmtp {
+    mode = 0600
+    user = postfix
+    group = postfix
+  }
+}
+
+protocol lmtp {
+  postmaster_address = postmaster@{{ mail_domain }}
+  mail_plugins {
+    sieve = yes
+  }
+}
+
+sieve_script personal {
+  type = personal
+  driver = file
+  path = ~/sieve
+  active_path = ~/.dovecot.sieve
+}
+
+# POP3S on 995 only; plain POP3 (110) disabled
+service pop3-login {
+  inet_listener pop3 {
+    port = 0
+  }
+  inet_listener pop3s {
+    port = 995
+    ssl = yes
+  }
+}
+
+protocol pop3 {
+  # RETR marks messages \Seen so retention can expunge only downloaded mail.
+  pop3_no_flag_updates = no
+}

@@ -1,0 +1,80 @@
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name {{ mail_fqdn }};
+
+    ssl_certificate     {{ tls_cert }};
+    ssl_certificate_key {{ tls_key }};
+    ssl_protocols       TLSv1.2 TLSv1.3;
+
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+
+    location = /auth/verify {
+        internal;
+        proxy_pass http://{{ panel_bind }}:{{ panel_port }};
+        proxy_pass_request_body off;
+        proxy_set_header Content-Length "";
+        proxy_set_header Cookie $http_cookie;
+    }
+
+    location = /grafana/api/live/ws {
+        auth_request /auth/verify;
+        auth_request_set $panel_user $upstream_http_x_user;
+        error_page 401 = @grafana_unauthorized;
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-WEBAUTH-USER $panel_user;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_read_timeout 3600s;
+    }
+
+    location /grafana/api/ {
+        auth_request /auth/verify;
+        auth_request_set $panel_user $upstream_http_x_user;
+        error_page 401 = @grafana_unauthorized;
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-WEBAUTH-USER $panel_user;
+    }
+
+    location /grafana/ {
+        auth_request /auth/verify;
+        auth_request_set $panel_user $upstream_http_x_user;
+        error_page 401 = @grafana_need_login;
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-WEBAUTH-USER $panel_user;
+    }
+
+    location @grafana_unauthorized {
+        return 401;
+    }
+
+    location @grafana_need_login {
+        return 302 /login;
+    }
+
+    location / {
+        proxy_pass http://{{ panel_bind }}:{{ panel_port }};
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}

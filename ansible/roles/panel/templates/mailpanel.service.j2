@@ -1,0 +1,16 @@
+[Unit]
+Description=mail mailbox panel
+After=network.target
+
+[Service]
+Type=simple
+User={{ panel_user }}
+Group={{ panel_user }}
+EnvironmentFile=/etc/mailpanel.env
+WorkingDirectory={{ panel_root }}
+ExecStart=/usr/bin/python3 {{ panel_root }}/server.py
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

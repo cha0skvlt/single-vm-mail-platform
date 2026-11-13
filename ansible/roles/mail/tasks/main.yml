@@ -1,0 +1,216 @@
+---
+- name: Preseed postfix debconf (non-interactive install)
+  ansible.builtin.debconf:
+    name: postfix
+    question: "{{ item.q }}"
+    vtype: "{{ item.t }}"
+    value: "{{ item.v }}"
+  loop:
+    - { q: "postfix/main_mailer_type", t: "select", v: "Internet Site" }
+    - { q: "postfix/mailname", t: "string", v: "{{ mail_fqdn }}" }
+  loop_control:
+    label: "{{ item.q }}"
+
+- name: Install mail packages
+  ansible.builtin.apt:
+    name: "{{ mail_packages }}"
+    state: present
+    update_cache: true
+
+- name: Ensure vmail group
+  ansible.builtin.group:
+    name: "{{ vmail_group }}"
+    gid: "{{ vmail_uid }}"
+
+- name: Ensure vmail user
+  ansible.builtin.user:
+    name: "{{ vmail_user }}"
+    uid: "{{ vmail_uid }}"
+    group: "{{ vmail_group }}"
+    home: "{{ vmail_home }}"
+    shell: /usr/sbin/nologin
+    create_home: true
+
+- name: Ensure vmail domain directory
+  ansible.builtin.file:
+    path: "{{ vmail_home }}/{{ mail_domain }}"
+    state: directory
+    owner: "{{ vmail_user }}"
+    group: "{{ vmail_group }}"
+    mode: "0700"
+
+# --- TLS ---
+- name: Ensure TLS directory
+  ansible.builtin.file:
+    path: /etc/ssl/mail
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install TLS certificate (fullchain)
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../ssl/fullchain.pem"
+    dest: "{{ tls_cert }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Restart postfix
+    - Restart dovecot
+
+- name: Install TLS private key
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../ssl/privkey.pem"
+    dest: "{{ tls_key }}"
+    owner: root
+    group: root
+    mode: "0600"
+  notify:
+    - Restart postfix
+    - Restart dovecot
+
+# --- Postfix config ---
+- name: Template postfix main.cf
+  ansible.builtin.template:
+    src: main.cf.j2
+    dest: /etc/postfix/main.cf
+    mode: "0644"
+  notify: Reload postfix
+
+- name: Touch virtual_redirect map if missing
+  ansible.builtin.file:
+    path: /etc/postfix/virtual_redirect
+    state: touch
+    modification_time: preserve
+    access_time: preserve
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Hash virtual_redirect when .db is missing
+  ansible.builtin.command:
+    cmd: postmap /etc/postfix/virtual_redirect
+    creates: /etc/postfix/virtual_redirect.db
+
+- name: Install Postfix client blacklist (cidr)
+  ansible.builtin.copy:
+    src: client_blacklist
+    dest: /etc/postfix/client_blacklist
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart postfix
+
+- name: Template postfix master.cf
+  ansible.builtin.template:
+    src: master.cf.j2
+    dest: /etc/postfix/master.cf
+    mode: "0644"
+  notify: Restart postfix
+
+# --- Dovecot config ---
+- name: Template dovecot.conf (self-contained, no conf.d includes)
+  ansible.builtin.template:
+    src: dovecot.conf.j2
+    dest: /etc/dovecot/dovecot.conf
+    mode: "0644"
+  notify: Restart dovecot
+
+# --- Accounts: maps are built from SQLite by the panel (mail-users-sync) ---
+- name: Install mail-users-sync
+  ansible.builtin.copy:
+    src: mail-users-sync.sh
+    dest: /usr/local/sbin/mail-users-sync
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install mail-autoreply-sync
+  ansible.builtin.copy:
+    src: mail-autoreply-sync.sh
+    dest: /usr/local/sbin/mail-autoreply-sync
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install mail-autoreply-expire
+  ansible.builtin.copy:
+    src: mail-autoreply-expire.py
+    dest: /usr/local/sbin/mail-autoreply-expire
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install mail-autoreply-expire systemd unit
+  ansible.builtin.copy:
+    src: mail-autoreply-expire.service
+    dest: /etc/systemd/system/mail-autoreply-expire.service
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Install mail-autoreply-expire timer
+  ansible.builtin.copy:
+    src: mail-autoreply-expire.timer
+    dest: /etc/systemd/system/mail-autoreply-expire.timer
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Enable mail-autoreply-expire timer
+  ansible.builtin.systemd:
+    name: mail-autoreply-expire.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Install mail-users-import
+  ansible.builtin.copy:
+    src: mail-users-import.sh
+    dest: /usr/local/sbin/mail-users-import
+    owner: root
+    group: root
+    mode: "0755"
+
+# --- Retention: expunge only downloaded (\Seen) mail older than N days ---
+- name: Install mail-cleanup script
+  ansible.builtin.copy:
+    src: mail-cleanup.sh
+    dest: /usr/local/sbin/mail-cleanup.sh
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install mail-cleanup systemd unit
+  ansible.builtin.template:
+    src: mail-cleanup.service.j2
+    dest: /etc/systemd/system/mail-cleanup.service
+    mode: "0644"
+
+- name: Install mail-cleanup timer
+  ansible.builtin.copy:
+    src: mail-cleanup.timer
+    dest: /etc/systemd/system/mail-cleanup.timer
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Enable mail-cleanup timer
+  ansible.builtin.systemd:
+    name: mail-cleanup.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Enable and start postfix + dovecot
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  loop:
+    - postfix
+    - dovecot
+
+- name: Apply postfix/dovecot config before later roles
+  ansible.builtin.meta: flush_handlers

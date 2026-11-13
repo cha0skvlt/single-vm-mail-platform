@@ -1,0 +1,41 @@
+# Local environment
+.env
+panel/.env
+*.env
+!*.env.example
+
+# Terraform
+terraform/.terraform/
+terraform/*.tfvars
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/plan.txt
+terraform/s3-backend.env
+terraform/crash.log
+terraform/.terraform.tfstate.lock.info
+
+# Ansible
+ansible/inventory.ini
+ansible/.inventory.ci.tmp
+ansible/*.retry
+ansible/known_hosts.ci
+
+# Secrets
+keys/ci_deploy
+keys/known_hosts.ci
+.panel-creds
+ssl/
+dkim/*.private
+data/*.csv
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# OS / editor
+.DS_Store
+.cursor/
+TODO.md

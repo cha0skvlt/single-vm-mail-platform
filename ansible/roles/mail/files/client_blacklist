@@ -1,0 +1,9 @@
+# Manual inbound ban on :25 (Postfix cidr map — no postmap).
+# After edit: deploy ansible, OR on the server copy this file and `postfix reload`.
+# Git file is the source of truth; a server-only edit is overwritten on next deploy.
+#
+# 203.0.113.10 REJECT manual blacklist
+# 198.51.100.0/24 REJECT manual blacklist
+#
+# Override a DNSBL false positive:
+# 203.0.113.50 OK

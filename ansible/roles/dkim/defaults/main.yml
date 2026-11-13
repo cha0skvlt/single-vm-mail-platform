@@ -1,0 +1,2 @@
+---
+dkim_keyfile: "/etc/opendkim/keys/{{ mail_domain }}/{{ dkim_selector }}.private"

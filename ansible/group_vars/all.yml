@@ -1,0 +1,40 @@
+---
+# Server install root — hostname = inventory group name (mail).
+hostname: "{{ group_names[0] }}"
+ssh_port: 666
+admin_user: deploy
+
+# Host timezone (calendar-day boundaries for autoreplies, log timestamps).
+timezone: "UTC"
+
+# Mail
+mail_domain: example.com
+mail_fqdn: mail.example.com
+vmail_user: vmail
+vmail_group: vmail
+vmail_uid: 5000
+vmail_home: /var/vmail
+tls_cert: /etc/ssl/mail/fullchain.pem
+tls_key: /etc/ssl/mail/privkey.pem
+
+# Retention: auto-expunge only downloaded (\Seen) mail older than N days.
+mail_retention_days: 30
+
+# DKIM
+dkim_selector: "{{ lookup('env', 'DKIM_SELECTOR') | default('mail', true) }}"
+
+# Optional external milter (antispam/antivirus). Leave empty for OpenDKIM only.
+# When set, prepend it to smtpd_milters in roles/mail/templates/main.cf.j2.
+ess_milter_host: ""
+ess_milter_port: 28000
+
+# Inbound antispam on :25 (not applied to authenticated 465).
+postfix_rbl_zones:
+  - zen.spamhaus.org
+  - bl.spamcop.net
+
+# Panel (mail.example.com:443) — credentials from env / CI secrets.
+mail_admin_user: "{{ lookup('env', 'MAIL_ADMIN_USER') }}"
+mail_admin_password: "{{ lookup('env', 'MAIL_ADMIN_PASSWORD') }}"
+mail_session_secret: "{{ lookup('env', 'MAIL_SESSION_SECRET') }}"
+grafana_admin_password: "{{ lookup('env', 'GRAFANA_ADMIN_PASSWORD') }}"

@@ -1,0 +1,38 @@
+[DEFAULT]
+bantime = 1h
+findtime = 10m
+maxretry = 5
+banaction = ufw
+ignoreip = {{ fail2ban_ignoreip | join(' ') }}
+
+[sshd]
+enabled = true
+port = {{ ssh_port }}
+filter = sshd
+backend = systemd
+maxretry = 5
+bantime = 1h
+
+[postfix]
+enabled = true
+port = smtp,465,submission
+backend = systemd
+
+[postfix-sasl]
+enabled = true
+port = smtp,465,submission
+backend = systemd
+
+[dovecot]
+enabled = true
+port = pop3s,995
+backend = systemd
+
+[mailpanel-auth]
+enabled = true
+port = 443
+filter = mailpanel-auth
+backend = systemd
+journalmatch = _SYSTEMD_UNIT=mailpanel.service
+maxretry = 5
+bantime = 1h

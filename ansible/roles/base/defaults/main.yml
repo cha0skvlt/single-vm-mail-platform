@@ -1,0 +1,18 @@
+---
+# Full dist-upgrade only when explicitly requested (-e upgrade_packages=true).
+upgrade_packages: false
+
+# Host firewall mirrors cloud SG: SSH, SMTP, HTTPS panel, SMTPS, POP3S. No :80.
+ufw_allowed_tcp_ports:
+  - "{{ ssh_port }}"
+  - "25"
+  - "443"
+  - "465"
+  - "995"
+
+# 28000 only from ESS. No exporter holes — Prometheus/Grafana bind localhost.
+ufw_allowed_from_hosts:
+  - from: "{{ ess_milter_host }}"
+    port: "{{ ess_milter_port }}"
+    proto: tcp
+    comment: ess-milter

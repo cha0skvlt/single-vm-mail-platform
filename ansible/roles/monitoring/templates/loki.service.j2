@@ -1,0 +1,16 @@
+[Unit]
+Description=mail Loki (local logs)
+After=network.target
+
+[Service]
+Type=simple
+User=loki
+Group=loki
+ExecStart=/usr/local/bin/loki -config.file=/etc/loki/config.yml
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=20
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

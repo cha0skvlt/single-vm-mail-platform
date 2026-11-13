@@ -1,0 +1,14 @@
+Syslog                  yes
+SyslogSuccess           yes
+UMask                   007
+Mode                    sv
+Canonicalization        relaxed/simple
+OversignHeaders         From
+# Clients submit from arbitrary IPs on 465; sign when Postfix sets {auth_type}.
+MacroList               {auth_type}
+Domain                  {{ mail_domain }}
+Selector                {{ dkim_selector }}
+KeyFile                 {{ dkim_keyfile }}
+Socket                  inet:8891@127.0.0.1
+PidFile                 /run/opendkim/opendkim.pid
+UserID                  opendkim

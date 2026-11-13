@@ -1,0 +1,134 @@
+---
+- name: Fail when panel admin secrets are missing
+  ansible.builtin.fail:
+    msg: Set MAIL_ADMIN_USER, MAIL_ADMIN_PASSWORD, MAIL_SESSION_SECRET
+  when: not (mail_admin_user and mail_admin_password and mail_session_secret)
+
+- name: Install nginx
+  ansible.builtin.apt:
+    name: nginx
+    state: present
+    update_cache: true
+
+- name: Ensure mailpanel user
+  ansible.builtin.user:
+    name: "{{ panel_user }}"
+    system: true
+    shell: /usr/sbin/nologin
+    home: "{{ panel_db_dir }}"
+    create_home: false
+
+- name: Ensure panel directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ panel_user }}"
+    group: "{{ panel_user }}"
+    mode: "0750"
+  loop:
+    - "{{ panel_root }}"
+    - "{{ panel_db_dir }}"
+
+- name: Sync panel application
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../panel/"
+    dest: "{{ panel_root }}/"
+    owner: "{{ panel_user }}"
+    group: "{{ panel_user }}"
+    mode: "0644"
+    directory_mode: "0755"
+  notify: Restart mailpanel
+
+- name: Panel executable bits
+  ansible.builtin.file:
+    path: "{{ panel_root }}/server.py"
+    mode: "0755"
+
+- name: Install panel environment
+  ansible.builtin.template:
+    src: mailpanel.env.j2
+    dest: /etc/mailpanel.env
+    owner: root
+    group: "{{ panel_user }}"
+    mode: "0640"
+  notify: Restart mailpanel
+
+- name: Install panel systemd unit
+  ansible.builtin.template:
+    src: mailpanel.service.j2
+    dest: /etc/systemd/system/mailpanel.service
+    mode: "0644"
+  notify: Restart mailpanel
+
+- name: Allow mailpanel to run mail-users-sync
+  ansible.builtin.template:
+    src: sudoers.j2
+    dest: /etc/sudoers.d/mailpanel
+    mode: "0440"
+    validate: "visudo -cf %s"
+
+- name: Disable default nginx site
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: Reload nginx
+
+- name: Install nginx upgrade map
+  ansible.builtin.copy:
+    src: grafana-upgrade-map.conf
+    dest: /etc/nginx/conf.d/grafana-upgrade-map.conf
+    mode: "0644"
+  notify: Reload nginx
+
+- name: Install mail nginx site
+  ansible.builtin.template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/sites-available/mail
+    mode: "0644"
+  notify: Reload nginx
+
+- name: Enable mail nginx site
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/mail
+    dest: /etc/nginx/sites-enabled/mail
+    state: link
+  notify: Reload nginx
+
+- name: Enable and start mailpanel
+  ansible.builtin.systemd:
+    name: mailpanel
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Enable and start nginx
+  ansible.builtin.systemd:
+    name: nginx
+    enabled: true
+    state: started
+
+- name: Check uploaded CSV on server
+  ansible.builtin.stat:
+    path: /root/mail_users.csv
+  register: mail_users_csv_remote
+
+- name: Import CSV into SQLite when database is empty
+  ansible.builtin.command:
+    cmd: /usr/local/sbin/mail-users-import /root/mail_users.csv
+  environment:
+    MAILPANEL_DB: "{{ panel_db_dir }}/users.db"
+    MAIL_DOMAIN: "{{ mail_domain }}"
+    PYTHONPATH: "{{ panel_root }}"
+    MAIL_USERS_SYNC: /usr/local/sbin/mail-users-sync
+  when: mail_users_csv_remote.stat.exists
+  register: mail_import
+  changed_when: "'imported' in (mail_import.stdout | default('')) and 'skipped' not in (mail_import.stdout | default(''))"
+
+- name: Panel user owns the mailbox database
+  ansible.builtin.file:
+    path: "{{ panel_db_dir }}"
+    state: directory
+    owner: "{{ panel_user }}"
+    group: "{{ panel_user }}"
+    mode: "0750"
+    recurse: true

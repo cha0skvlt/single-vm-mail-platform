@@ -1,0 +1,11 @@
+---
+- name: Restart opendkim
+  ansible.builtin.systemd:
+    name: opendkim
+    state: restarted
+  notify: Restart postfix for milter
+
+- name: Restart postfix for milter
+  ansible.builtin.systemd:
+    name: postfix
+    state: restarted
